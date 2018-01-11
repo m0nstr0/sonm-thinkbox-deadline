@@ -4,7 +4,7 @@ Category=Node
 CategoryOrder=1
 Index=0
 Label=Node endpoint
-Default=127.0.0.1:9999
+Default=172.16.1.31:9999
 Description=IP Address of SONM Node
 
 
@@ -22,7 +22,7 @@ Type=string
 Index=0
 Category=Order
 CategoryOrder=1
-Default=1100000000000000000
+Default=100
 Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
 
 [Supplier]
