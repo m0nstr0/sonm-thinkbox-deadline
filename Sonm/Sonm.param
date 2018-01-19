@@ -12,94 +12,93 @@ Description=IP Address of SONM Node
 Type=filename
 Index=0
 Category=Cli
-CategoryOrder=1
+CategoryOrder=2
 Default=
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Label=Path to cli
+Description=
 
 
 [Price]
 Type=string
 Index=0
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=100
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Label=Price
+Description=
 
 [Supplier]
 Type=string
 Category=Order
 Index=1
-CategoryOrder=1
+CategoryOrder=3
 Default=0x57E93C80745cbA50cF2cF8F3A7BA7Ee0d32cE79B
 Description=
+Label=Supplier
 
 [Duration]
 Type=string
-Index=0
+Index=2
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=12h
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
-
+Description=
 
 [CpuCores]
 Type=string
-Index=0
+Index=3
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=1
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
-
+Description=
 
 [RamBytes]
 Type=string
-Index=0
+Index=4
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=256mb
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
-
+Description=
 
 [GpuCount]
 Type=string
-Index=0
+Index=5
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=NO_GPU
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Description=
 
 
 [Storage]
 Type=string
-Index=0
+Index=6
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=1GB
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
-
+Description=
 
 [NetworkIn]
 Type=string
-Index=0
+Index=7
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=100Mb
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Description=
 
 
 [NetworkOut]
 Type=string
-Index=0
+Index=8
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=100Mb
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Description=
 
 
 [NetworkType]
 Type=string
-Index=0
+Index=9
 Category=Order
-CategoryOrder=1
+CategoryOrder=3
 Default=INCOMING
-Description=The path to your Client Secrets file. You can download it by going to your project, clicking on Credentials (under the APIs & auth heading) and clicking download JSON. Note: Deadline requires a Client ID for native applications.
+Description=

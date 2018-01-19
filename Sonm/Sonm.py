@@ -99,6 +99,19 @@ class SonmCloud (CloudPluginWrapper):
         
         return self.Yaml(BID, 0)
 
+    def GenerateTaskYaml( self ):
+        TASK = OrderedDict()
+        TASK["task"] = OrderedDict()
+        TASK["task"]["miners"] = []
+        TASK["task"]["container"] = OrderedDict()
+        TASK["task"]["container"]["commit_on_stop"] = True
+        TASK["task"]["container"]["name"] = "docker.io/library/httpd@sha256:b5f21641a9d7bbb59dc94fb6a663c43fbf3f56270ce7c7d51801ac74d2e70046"
+        TASK["task"]["resources"] = OrderedDict()
+        TASK["task"]["CPU"] = "1"
+        TASK["task"]["RAM"] = "256mb"
+
+        return self.Yaml(TASK, 0)
+
     def VerifyAccess( self ):
         return True
 
@@ -108,6 +121,7 @@ class SonmCloud (CloudPluginWrapper):
         ht.ID = "SONM"
         ht.Name = "SONM"
         ht_list.append(ht)
+
         return ht_list
 
     def GetAvailableOSImages( self ):
@@ -116,6 +130,7 @@ class SonmCloud (CloudPluginWrapper):
         osi.ID = "SONM"
         osi.Description = "SONM"
         osi_list.append(osi)
+        
         return osi_list
 
     def StartTask(self, dealID):
