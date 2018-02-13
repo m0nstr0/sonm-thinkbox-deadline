@@ -23,7 +23,7 @@ Type=string
 Index=0
 Category=Order
 CategoryOrder=3
-Default=100
+Default=0.000000000000000001
 Label=Price
 Description=
 
@@ -32,7 +32,7 @@ Type=string
 Category=Order
 Index=1
 CategoryOrder=3
-Default=0x57E93C80745cbA50cF2cF8F3A7BA7Ee0d32cE79B
+Default=
 Description=
 Label=Supplier
 
@@ -61,7 +61,8 @@ Default=256mb
 Description=
 
 [GpuCount]
-Type=string
+Type=Enum
+Items=NO_GPU;SINGLE_GPU;MULTIPLE_GPU
 Index=5
 Category=Order
 CategoryOrder=3
@@ -96,9 +97,37 @@ Description=
 
 
 [NetworkType]
-Type=string
+Type=Enum
+Items=NO_NETWORK;OUTBOUND;INCOMING
 Index=9
 Category=Order
 CategoryOrder=3
 Default=INCOMING
 Description=
+
+[CifsShare]
+Type=string
+Category=Volume
+Index=1
+CategoryOrder=4
+Default=
+Description=
+Label=Share
+
+[CifsUsername]
+Type=string
+Category=Volume
+Index=2
+CategoryOrder=4
+Default=
+Description=
+Label=Username
+
+[CifsPassword]
+Type=string
+Category=Volume
+Index=3
+CategoryOrder=4
+Default=
+Description=
+Label=Password

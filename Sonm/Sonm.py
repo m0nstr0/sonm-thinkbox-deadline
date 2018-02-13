@@ -40,7 +40,7 @@ class SonmCloud (CloudPluginWrapper):
     TASK_FINISHED        = 4
     TASK_BROKEN          = 5
 
-    DEADLINE_IMG_NAME = "library/httpd"
+    DEADLINE_IMG_NAME = "m0nstr0/deadline"
 
     def __init__( self ):
         ClientUtils.LogText("SonmCloud init.")
@@ -104,12 +104,21 @@ class SonmCloud (CloudPluginWrapper):
         TASK["task"] = OrderedDict()
         TASK["task"]["miners"] = []
         TASK["task"]["container"] = OrderedDict()
-        TASK["task"]["container"]["commit_on_stop"] = True
-        TASK["task"]["container"]["name"] = "docker.io/library/httpd@sha256:b5f21641a9d7bbb59dc94fb6a663c43fbf3f56270ce7c7d51801ac74d2e70046"
+        TASK["task"]["container"]["commit_on_stop"] = "true"
+        TASK["task"]["container"]["name"] = self.DEADLINE_IMG_NAME
+        TASK["task"]["container"]["volumes"] = OrderedDict()
+        TASK["task"]["container"]["volumes"]["cifs"] = OrderedDict()
+        TASK["task"]["container"]["volumes"]["cifs"]["type"] = "cifs"
+        TASK["task"]["container"]["volumes"]["cifs"]["options"] = OrderedDict()
+        TASK["task"]["container"]["volumes"]["cifs"]["options"]["share"] = self.GetConfigEntryWithDefault("CifsShare", "")
+        TASK["task"]["container"]["volumes"]["cifs"]["options"]["username"] = self.GetConfigEntryWithDefault("CifsUsername", "")
+        TASK["task"]["container"]["volumes"]["cifs"]["options"]["password"] = self.GetConfigEntryWithDefault("CifsPassword", "")
+        TASK["task"]["container"]["volumes"]["cifs"]["options"]["vers"] = "3.0"
+        TASK["task"]["container"]["mounts"] = ["cifs:/mnt/deadlinerepository10:rw"]
         TASK["task"]["resources"] = OrderedDict()
-        TASK["task"]["CPU"] = "1"
-        TASK["task"]["RAM"] = "256mb"
-
+        TASK["task"]["resources"]["CPU"] = self.GetConfigEntryWithDefault("CpuCores", "")
+        TASK["task"]["resources"]["RAM"] = self.GetConfigEntryWithDefault("RamBytes", "")
+        TASK["task"]["resources"]["GPU"] = "false" if self.GetConfigEntryWithDefault("GpuCount", "") == "NO_GPU" else "true"
         return self.Yaml(TASK, 0)
 
     def GenerateFileWithYaml(self, data):
@@ -120,7 +129,7 @@ class SonmCloud (CloudPluginWrapper):
             postfix = postfix + 1
         out_yaml = os.path.join(temp_dir, fname + str(postfix) + ".yml")
         f = open(out_yaml, 'w')
-        f.write(self.GenerateBidYaml())
+        f.write(data)
         f.close()
 
         return out_yaml
@@ -153,11 +162,17 @@ class SonmCloud (CloudPluginWrapper):
 
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
 
+        file_path = self.GenerateFileWithYaml(self.GenerateTaskYaml())
+
         try:
-            response = check_output([cli, "tasks", "start", dealID, "/Users/sergey/Projects/cfg/cli/task.yaml", "--node", node, "--out", "json"])
+            response = check_output([cli, "tasks", "start", dealID, file_path, "--node", node, "--out", "json"])
             task = json.loads(response)
 
             if not isinstance(task, dict):
+                return self.TASK_UNKNOWN
+
+            if "error" in task:
+                ClientUtils.LogText(task["error"])
                 return self.TASK_UNKNOWN
 
             if "id" not in task:
@@ -443,13 +458,16 @@ class SonmCloud (CloudPluginWrapper):
                 task = json.loads(response)
 
                 if not self.isDealDeadline(task):
+                    ClientUtils.LogText("[SONM] StartInstances - Is not deadline task.")
                     continue
 
                 if "running" not in task["info"]:
+                    ClientUtils.LogText("[SONM] StartInstances - Cant find running sections.")
                     continue
 
                 if "statuses" not in task["info"]["running"]:
                     #start task
+                    ClientUtils.LogText("[SONM] StartInstances - Starting task.")
                     self.StartTask(v)
                     continue
 
@@ -460,6 +478,7 @@ class SonmCloud (CloudPluginWrapper):
                             continue
 
                 #deadline image has not been found, start task
+                ClientUtils.LogText("[SONM] StartInstances - Starting task.")
                 self.StartTask(v)
 
         except Exception as e:
