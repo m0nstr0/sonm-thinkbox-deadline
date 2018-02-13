@@ -4,7 +4,7 @@ Category=Node
 CategoryOrder=1
 Index=0
 Label=Node endpoint
-Default=172.16.1.31:9999
+Default=127.0.0.1:15030
 Description=IP Address of SONM Node
 
 
