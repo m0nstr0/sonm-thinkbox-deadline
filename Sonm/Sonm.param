@@ -15,8 +15,16 @@ Category=Cli
 CategoryOrder=2
 Default=
 Label=Path to cli
-Description=
+Description=Path to SONM Cli
 
+[Timeout]
+Type=string
+Index=1
+Category=Cli
+CategoryOrder=2
+Default=600s
+Label=Timeout
+Description=
 
 [Price]
 Type=string
@@ -24,17 +32,8 @@ Index=0
 Category=Order
 CategoryOrder=3
 Default=0.000000000000000001
-Label=Price
+Label=Price per second
 Description=
-
-[Supplier]
-Type=string
-Category=Order
-Index=1
-CategoryOrder=3
-Default=
-Description=
-Label=Supplier
 
 [Duration]
 Type=string
@@ -60,16 +59,6 @@ CategoryOrder=3
 Default=256mb
 Description=
 
-[GpuCount]
-Type=Enum
-Items=NO_GPU;SINGLE_GPU;MULTIPLE_GPU
-Index=5
-Category=Order
-CategoryOrder=3
-Default=NO_GPU
-Description=
-
-
 [Storage]
 Type=string
 Index=6
@@ -86,7 +75,6 @@ CategoryOrder=3
 Default=100Mb
 Description=
 
-
 [NetworkOut]
 Type=string
 Index=8
@@ -96,23 +84,14 @@ Default=100Mb
 Description=
 
 
-[NetworkType]
-Type=Enum
-Items=NO_NETWORK;OUTBOUND;INCOMING
-Index=9
-Category=Order
-CategoryOrder=3
-Default=INCOMING
-Description=
-
 [CifsShare]
 Type=string
 Category=Volume
 Index=1
 CategoryOrder=4
 Default=
-Description=
-Label=Share
+Description=Path to SAMBA share
+Label=Path
 
 [CifsUsername]
 Type=string
@@ -120,7 +99,7 @@ Category=Volume
 Index=2
 CategoryOrder=4
 Default=
-Description=
+Description=Username for SAMBA share
 Label=Username
 
 [CifsPassword]
@@ -129,5 +108,13 @@ Category=Volume
 Index=3
 CategoryOrder=4
 Default=
-Description=
+Description=Password for SAMBA share
 Label=Password
+
+[ImageName]
+Type=string
+Index=4
+CategoryOrder=5
+Default=
+Description=
+Label=Docker Image

@@ -32,6 +32,7 @@ class SonmCloud (CloudPluginWrapper):
     DEAL_ACCEPTED   = 2
     DEAL_CLOSED     = 3
 
+    TASK_EMPTY           = -2
     TASK_IS_NOT_DEADLINE = -1
     TASK_UNKNOWN         = 0
     TASK_SPOOLING        = 1
@@ -39,8 +40,6 @@ class SonmCloud (CloudPluginWrapper):
     TASK_RUNNING         = 3
     TASK_FINISHED        = 4
     TASK_BROKEN          = 5
-
-    DEADLINE_IMG_NAME = "m0nstr0/deadline"
 
     def __init__( self ):
         ClientUtils.LogText("SonmCloud init.")
@@ -88,14 +87,12 @@ class SonmCloud (CloudPluginWrapper):
         BID['resources'] = OrderedDict()
         BID['resources']['cpu_cores'] = self.GetConfigEntryWithDefault("CpuCores", "")
         BID['resources']['ram_bytes'] = self.GetConfigEntryWithDefault("RamBytes", "")
-        BID['resources']['gpu_count'] = self.GetConfigEntryWithDefault("GpuCount", "")
+        BID['resources']['gpu_count'] = "MULTIPLE_GPU"
         BID['resources']['storage'] = self.GetConfigEntryWithDefault("Storage", "")
         BID['resources']['network'] = OrderedDict()
         BID['resources']['network']['in'] = self.GetConfigEntryWithDefault("NetworkIn", "")
         BID['resources']['network']['out'] = self.GetConfigEntryWithDefault("NetworkOut", "")
-        BID['resources']['network']['type'] = self.GetConfigEntryWithDefault("NetworkType", "")
-        BID['resources']['properties'] = OrderedDict()
-        BID['resources']['properties']['sonm_deadline'] = '1'
+        BID['resources']['network']['type'] = "INCOMING"
         
         return self.Yaml(BID, 0)
 
@@ -104,8 +101,8 @@ class SonmCloud (CloudPluginWrapper):
         TASK["task"] = OrderedDict()
         TASK["task"]["miners"] = []
         TASK["task"]["container"] = OrderedDict()
-        TASK["task"]["container"]["commit_on_stop"] = "true"
-        TASK["task"]["container"]["name"] = self.DEADLINE_IMG_NAME
+        TASK["task"]["container"]["commit_on_stop"] = "false"
+        TASK["task"]["container"]["name"] = self.GetConfigEntryWithDefault("ImageName", "")
         TASK["task"]["container"]["volumes"] = OrderedDict()
         TASK["task"]["container"]["volumes"]["cifs"] = OrderedDict()
         TASK["task"]["container"]["volumes"]["cifs"]["type"] = "cifs"
@@ -115,10 +112,6 @@ class SonmCloud (CloudPluginWrapper):
         TASK["task"]["container"]["volumes"]["cifs"]["options"]["password"] = self.GetConfigEntryWithDefault("CifsPassword", "")
         TASK["task"]["container"]["volumes"]["cifs"]["options"]["vers"] = "3.0"
         TASK["task"]["container"]["mounts"] = ["cifs:/mnt/deadlinerepository10:rw"]
-        TASK["task"]["resources"] = OrderedDict()
-        TASK["task"]["resources"]["CPU"] = self.GetConfigEntryWithDefault("CpuCores", "")
-        TASK["task"]["resources"]["RAM"] = self.GetConfigEntryWithDefault("RamBytes", "")
-        TASK["task"]["resources"]["GPU"] = "false" if self.GetConfigEntryWithDefault("GpuCount", "") == "NO_GPU" else "true"
         return self.Yaml(TASK, 0)
 
     def GenerateFileWithYaml(self, data):
@@ -156,7 +149,7 @@ class SonmCloud (CloudPluginWrapper):
         return osi_list
 
     def StartTask(self, dealID):
-        ClientUtils.LogText( "[SONM] StartTask" )
+        ClientUtils.LogText( "[SONM] Start StartTask" )
 
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
 
@@ -165,7 +158,7 @@ class SonmCloud (CloudPluginWrapper):
         file_path = self.GenerateFileWithYaml(self.GenerateTaskYaml())
 
         try:
-            response = check_output([cli, "tasks", "start", dealID, file_path, "--node", node, "--out", "json"])
+            response = check_output([cli, "tasks", "start", dealID, file_path, "--timeout", self.GetConfigEntryWithDefault("Timeout", "600s"), "--node", node, "--out", "json"])
             task = json.loads(response)
 
             if not isinstance(task, dict):
@@ -181,34 +174,12 @@ class SonmCloud (CloudPluginWrapper):
         except Exception as e:
             ClientUtils.LogText( traceback.format_exc() )
         
+        ClientUtils.LogText( "[SONM] End StartTask" )
+
         return self.TASK_SPAWNING
 
-    def isDealDeadline(self, task):
-        if not isinstance(task, dict):
-            return False
-
-        if "info" not in task:
-            return False
-
-        if "order" not in task["info"]:
-            return False
-
-        if "slot" not in task["info"]["order"]:
-            return False
-
-        if "resources" not in task["info"]["order"]["slot"]:
-            return False
-
-        if "properties" not in task["info"]["order"]["slot"]["resources"]:
-            return False
-
-        if "sonm_deadline" not in task["info"]["order"]["slot"]["resources"]["properties"]:
-            return False
-
-        return True
-
     def ParseTask (self, dealID):
-        ClientUtils.LogText( "[SONM] ParseTask" )
+        ClientUtils.LogText( "[SONM] Start ParseTask" )
 
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
 
@@ -220,62 +191,48 @@ class SonmCloud (CloudPluginWrapper):
             response = check_output([cli, "deals", "status", dealID, "--node", node, "--out", "json"])
             task = json.loads(response)
 
-            if not self.isDealDeadline(task):
-                return self.TASK_IS_NOT_DEADLINE
-
             if "running" not in task["info"]:
                 return self.TASK_UNKNOWN
 
             #if this is true than deal is just spawned
             if "statuses" not in task["info"]["running"]:
                 if "statuses" not in task["info"]["completed"]:
-                    #start task
-                    return self.StartTask(dealID)
+                    return self.TASK_EMPTY
 
             #find image in running
             if "statuses" in task["info"]["running"]:
                 for v in task["info"]["running"]["statuses"]:
-                    if task["info"]["running"]["statuses"][v]["imageName"] == self.DEADLINE_IMG_NAME:
+                    if task["info"]["running"]["statuses"][v]["imageName"] == self.GetConfigEntryWithDefault("ImageName", ""):
                         return task["info"]["running"]["statuses"][v]["status"]
 
             #find image in completed
             if "statuses" in task["info"]["completed"]:
                 for v in task["info"]["completed"]["statuses"]:
-                    ClientUtils.LogText(v)
-                    if task["info"]["completed"]["statuses"][v]["imageName"] == self.DEADLINE_IMG_NAME:
+                    #ClientUtils.LogText(v)
+                    if task["info"]["completed"]["statuses"][v]["imageName"] == self.GetConfigEntryWithDefault("ImageName", ""):
                         return task["info"]["completed"]["statuses"][v]["status"]
 
             #deadline image has not been found, start task
-            return self.StartTask(dealID)
-
+            return self.TASK_UNKNOWN
         except Exception as e:
             ClientUtils.LogText( traceback.format_exc() )
         
+        ClientUtils.LogText( "[SONM] End ParseTask" )
+
         return self.TASK_IS_NOT_DEADLINE
 
     def ParseDeals (self):
-        ClientUtils.LogText( "[SONM] ParseDeals" )
+        ClientUtils.LogText( "[SONM] Start ParseDeals" )
 
         activeInstances = []
         
-        #check node config
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
-        if len(node.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to node.")
-            raise Exception("[SONM] Please enter path to node.")
 
-
-        #check cli config
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
-        if len(cli.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to cli.")
-            raise Exception("[SONM] Please enter path to cli.")
-
+        
         try:
             response = check_output([cli, "deals", "list", "--node", node, "--out", "json"])
-            
-            ClientUtils.LogText(response)
-            
+                        
             deals = json.loads(response)
 
             if "deals" not in deals :
@@ -309,6 +266,9 @@ class SonmCloud (CloudPluginWrapper):
                 if task_status == self.TASK_SPAWNING:
                     ci.Status = InstanceStatus.Pending
 
+                if task_status == self.TASK_EMPTY:
+                    ci.Status = InstanceStatus.Stopped
+
                 if task_status == self.TASK_RUNNING:
                     ci.Status = InstanceStatus.Running
 
@@ -323,6 +283,8 @@ class SonmCloud (CloudPluginWrapper):
         except Exception as e:
             ClientUtils.LogText( traceback.format_exc() )
         
+        ClientUtils.LogText( "[SONM] End ParseDeals" )
+
         return activeInstances
 
     def GetActiveInstances( self ):
@@ -330,14 +292,14 @@ class SonmCloud (CloudPluginWrapper):
 
     def CreateInstances( self, hardwareID, imageID, count ):
         
-        ClientUtils.LogText( "[SONM] CreateInstances" )
+        ClientUtils.LogText( "[SONM] Start CreateInstances" )
 
         startedInstances = []
         
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
         if len(node.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to node.")
-            raise Exception("[SONM] Please enter path to node.")
+            ClientUtils.LogText("[SONM] CreateInstances - Please fill node endpoint information.")
+            raise Exception("[SONM] Please fill node endpoint information.")
 
 
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
@@ -347,10 +309,8 @@ class SonmCloud (CloudPluginWrapper):
 
         price = self.GetConfigEntryWithDefault("Price", "")
         if len(cli.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter price.")
-            raise Exception("[SONM] Please enter price.")
-
-        supplier = self.GetConfigEntryWithDefault("Supplier", "")
+            ClientUtils.LogText("[SONM] CreateInstances - Please fill price information.")
+            raise Exception("[SONM] Please fill price information.")
 
         #generate temp file for order.yaml
         bid_yaml = self.GenerateFileWithYaml(self.GenerateBidYaml())
@@ -358,44 +318,33 @@ class SonmCloud (CloudPluginWrapper):
         for i in range(count):
 
             try:
-                #if supplier is'n set
-                if len(cli.strip()) <= 0:
-                    response = check_output([cli, "market",  "create", price, str(bid_yaml), "--node", node, "--out", "json"])
-                else:
-                    response = check_output([cli, "market",  "create", price, str(bid_yaml), supplier, "--node", node, "--out", "json"])
+                response = check_output([cli, "market",  "create", price, bid_yaml, "--node", node, "--out", "json"])
 
                 ClientUtils.LogText(response)
 
                 response = json.loads(response)
 
                 if "error" in response :
-                    ClientUtils.LogText("[SONM] " + response['message'])
+                    ClientUtils.LogText("[SONM] Error creating market order: " + response['message'])
                     continue
                 elif "id" not in response:
-                    ClientUtils.LogText("[SONM] Task ID not found")
+                    ClientUtils.LogText("[SONM] Error creating market order")
                     continue
 
-                ClientUtils.LogText("[SONM] Task ID is " + response["id"])
+                ClientUtils.LogText("[SONM] Market order ID is " + response["id"])
 
             except Exception as e:
                 ClientUtils.LogText( traceback.format_exc() )
 
-        ClientUtils.LogText("[SONM] " + str(len(startedInstances)) + " from " + str(count) + " instances has been created")
+        ClientUtils.LogText( "[SONM] End CreateInstances" )
+
         return []
 
     #deals finish <deal-id>
     def TerminateInstances( self, instanceIDs ):
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
-        if len(node.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to node.")
-            raise Exception("[SONM] Please enter path to node.")
-
-        #check cli config
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
-        if len(cli.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to cli.")
-            raise Exception("[SONM] Please enter path to cli.")
-
+        
         try:
             for v in instanceIDs:
                 response = check_output([cli, "deals", "finish", v, "--node", node, "--out", "json"])
@@ -406,23 +355,13 @@ class SonmCloud (CloudPluginWrapper):
     #tasks stop <hub-address> <task-id>
     def StopInstances( self, instanceIDs ):
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
-        if len(node.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to node.")
-            raise Exception("[SONM] Please enter path to node.")
 
-        #check cli config
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
-        if len(cli.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to cli.")
-            raise Exception("[SONM] Please enter path to cli.")
 
         try:
             for v in instanceIDs:
                 response = check_output([cli, "deals", "status", v, "--node", node, "--out", "json"])
                 task = json.loads(response)
-
-                if not self.isDealDeadline(task):
-                    continue
 
                 if "running" not in task["info"]:
                     continue
@@ -433,7 +372,7 @@ class SonmCloud (CloudPluginWrapper):
                 #find image in running
                 if "statuses" in task["info"]["running"]:
                     for task_id in task["info"]["running"]["statuses"]:
-                        if task["info"]["running"]["statuses"][task_id]["imageName"] == self.DEADLINE_IMG_NAME:
+                        if task["info"]["running"]["statuses"][task_id]["imageName"] == self.GetConfigEntryWithDefault("ImageName", ""):
                             response = check_output([cli, "tasks", "stop", task["deal"]["SupplierID"], task_id, "--node", node, "--out", "json"])
 
         except Exception as e:
@@ -442,43 +381,23 @@ class SonmCloud (CloudPluginWrapper):
     #task start <deal-id> <task-yaml>
     def StartInstances( self, instanceIDs ):
         node = self.GetConfigEntryWithDefault("NodeConfig", "")
-        if len(node.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to node.")
-            raise Exception("[SONM] Please enter path to node.")
 
-        #check cli config
         cli = self.GetConfigEntryWithDefault("CliConfig", "")
-        if len(cli.strip()) <= 0:                
-            ClientUtils.LogText("[SONM] CreateInstances - Please enter path to cli.")
-            raise Exception("[SONM] Please enter path to cli.")
 
         try:
             for v in instanceIDs:
                 response = check_output([cli, "deals", "status", v, "--node", node, "--out", "json"])
                 task = json.loads(response)
 
-                if not self.isDealDeadline(task):
-                    ClientUtils.LogText("[SONM] StartInstances - Is not deadline task.")
-                    continue
-
                 if "running" not in task["info"]:
-                    ClientUtils.LogText("[SONM] StartInstances - Cant find running sections.")
-                    continue
-
-                if "statuses" not in task["info"]["running"]:
-                    #start task
-                    ClientUtils.LogText("[SONM] StartInstances - Starting task.")
-                    self.StartTask(v)
                     continue
 
                 #find image in running
                 if "statuses" in task["info"]["running"]:
                     for task_id in task["info"]["running"]["statuses"]:
-                        if task["info"]["running"]["statuses"][task_id]["imageName"] == self.DEADLINE_IMG_NAME:
+                        if task["info"]["running"]["statuses"][task_id]["imageName"] == self.GetConfigEntryWithDefault("ImageName", ""):
                             continue
 
-                #deadline image has not been found, start task
-                ClientUtils.LogText("[SONM] StartInstances - Starting task.")
                 self.StartTask(v)
 
         except Exception as e:
